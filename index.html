@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestão de Insumos</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--bd:#e2e5ea;--ac:#d40511;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--bar:#e5e7eb}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--tx:#eceef1;--mut:#9aa1ad;--bd:#2d323b;--bar:#2d323b}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{background:var(--ac);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+header h1{margin:0;font-size:20px}
+header small{opacity:.9}
+main{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px;max-width:1300px;margin:auto}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+h2{margin:0 0 12px;font-size:16px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button{padding:10px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd);font-weight:500}
+button.mini{padding:2px 8px;font-size:12px}
+.full{width:100%;margin-top:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center}
+.stat b{display:block;font-size:24px}
+.stat span{font-size:12px;color:var(--mut)}
+.areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.area h3{margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;font-size:16px;text-transform:capitalize}
+.pill{font-size:12px;padding:2px 8px;border-radius:99px;font-weight:600;color:#fff}
+.row{padding:8px 0;border-top:1px solid var(--bd)}
+.row .top{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.row .nm{text-transform:capitalize}
+.bar{height:8px;background:var(--bar);border-radius:99px;margin:6px 0 2px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.falta{font-size:12px;color:var(--mut)}
+.toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:14px}
+.toolbar label{display:flex;align-items:center;gap:6px;margin:0;color:var(--tx)}
+.toolbar input{width:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 4px;border-top:1px solid var(--bd)}
+th{color:var(--mut);font-weight:500}
+.hist{overflow-x:auto;margin-top:16px}
+.msg{font-size:13px;color:var(--ok);margin-top:8px;min-height:18px}
+.inline{display:flex;gap:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gestão de Insumos</h1>
+  <small id="hoje"></small>
+</header>
+
+<main>
+  <aside>
+    <div class="card">
+      <h2>Novo lançamento</h2>
+      <label for="lider">Líder</label>
+      <input id="lider" placeholder="Seu nome">
+      <label for="area">Área</label>
+      <select id="area"></select>
+      <label for="item">Insumo</label>
+      <select id="item"></select>
+      <label for="tipo">Tipo de lançamento</label>
+      <select id="tipo">
+        <option value="set">Informar contagem atual</option>
+        <option value="add">Somar entrada</option>
+        <option value="sub">Registrar saída / baixa</option>
+      </select>
+      <label for="qtd">Quantidade</label>
+      <input id="qtd" type="number" min="0" inputmode="numeric" placeholder="0">
+      <label for="obs">Observação (opcional)</label>
+      <input id="obs" placeholder="Ex.: reposição do turno 2">
+      <button class="full" id="enviar">Lançar</button>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Configurar</h2>
+      <label for="novaArea">Nova área</label>
+      <div class="inline"><input id="novaArea" placeholder="Ex.: linha B"><button class="sec" id="addArea">+</button></div>
+      <label for="novoItem">Novo insumo na área selecionada</label>
+      <input id="novoItem" placeholder="Nome do insumo">
+      <div class="inline" style="margin-top:6px"><input id="novaMeta" type="number" min="1" placeholder="Meta"><button class="sec" id="addItem">Adicionar</button></div>
+      <button class="sec full" id="reset">Restaurar exemplo</button>
+    </div>
+  </aside>
+
+  <section>
+    <div class="stats">
+      <div class="stat"><b id="sOk">0</b><span>completos</span></div>
+      <div class="stat"><b id="sFalta">0</b><span>com falta</span></div>
+      <div class="stat"><b id="sPct">0%</b><span>abastecimento geral</span></div>
+    </div>
+    <div class="toolbar">
+      <label><input type="checkbox" id="soFalta"> Mostrar só o que falta</label>
+      <label><input type="checkbox" id="edicao"> Modo edição</label>
+    </div>
+    <div class="areas" id="areas"></div>
+
+    <div class="card hist">
+      <h2>Últimos lançamentos</h2>
+      <table>
+        <thead><tr><th>Quando</th><th>Líder</th><th>Área</th><th>Insumo</th><th>Mov.</th><th>Resultado</th></tr></thead>
+        <tbody id="hist"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+var KEY = 'insumos_v1';
+var $ = function (id) { return document.getElementById(id); };
+var uid = function () { return Math.random().toString(36).slice(2, 9); };
+var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+function seed() {
+  return {
+    areas: [
+      { id: uid(), nome: 'porão', itens: [
+        { id: uid(), nome: 'folhas', meta: 20, atual: 10 },
+        { id: uid(), nome: 'paleteiras', meta: 6, atual: 5 },
+        { id: uid(), nome: 'bancos', meta: 6, atual: 3 }
+      ] },
+      { id: uid(), nome: 'linha A', itens: [
+        { id: uid(), nome: 'cordas', meta: 48, atual: 20 },
+        { id: uid(), nome: 'paleteira', meta: 2, atual: 2 },
+        { id: uid(), nome: 'handheld', meta: 2, atual: 2 }
+      ] }
+    ],
+    log: []
+  };
+}
+
+var state;
+function load() {
+  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.areas) return s; } catch (e) {}
+  return seed();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+state = load();
+
+function cor(i) {
+  if (i.atual >= i.meta) return 'var(--ok)';
+  return i.atual / i.meta >= 0.5 ? 'var(--warn)' : 'var(--bad)';
+}
+
+function fillSelects() {
+  var a = $('area'), sel = a.value;
+  a.innerHTML = state.areas.map(function (x) { return '<option value="' + x.id + '">' + esc(x.nome) + '</option>'; }).join('');
+  if (state.areas.some(function (x) { return x.id === sel; })) a.value = sel;
+  fillItens();
+}
+function fillItens() {
+  var ar = state.areas.find(function (x) { return x.id === $('area').value; });
+  var cur = $('item').value;
+  $('item').innerHTML = ar ? ar.itens.map(function (i) {
+    return '<option value="' + i.id + '">' + esc(i.nome) + ' (' + i.atual + '/' + i.meta + ')</option>';
+  }).join('') : '';
+  if (ar && ar.itens.some(function (i) { return i.id === cur; })) $('item').value = cur;
+}
+
+function render() {
+  var soFalta = $('soFalta').checked, ed = $('edicao').checked;
+  var tot = 0, ok = 0, somaAt = 0, somaMeta = 0;
+
+  $('areas').innerHTML = state.areas.map(function (ar) {
+    var faltando = ar.itens.filter(function (i) { return i.atual < i.meta; }).length;
+    var linhas = ar.itens.filter(function (i) { return !soFalta || i.atual < i.meta; }).map(function (i) {
+      var pct = Math.min(100, Math.round(i.atual / i.meta * 100));
+      var falta = Math.max(0, i.meta - i.atual);
+      return '<div class="row"><div class="top"><span class="nm">' + esc(i.nome) + '</span><b>' + i.atual + '/' + i.meta + '</b></div>' +
+        '<div class="bar"><i style="width:' + pct + '%;background:' + cor(i) + '"></i></div>' +
+        '<div class="falta">' + (falta ? 'Faltam ' + falta : 'Completo') +
+        (ed ? ' &nbsp; <button class="sec mini" data-meta="' + ar.id + '|' + i.id + '">meta</button> <button class="sec mini" data-del="' + ar.id + '|' + i.id + '">remover</button>' : '') +
+        '</div></div>';
+    }).join('');
+    return '<div class="card area"><h3><span>' + esc(ar.nome) + '</span><span class="pill" style="background:' + (faltando ? 'var(--bad)' : 'var(--ok)') + '">' +
+      (faltando ? faltando + ' com falta' : 'OK') + '</span></h3>' +
+      (linhas || '<div class="falta">Nada faltando.</div>') +
+      (ed ? '<button class="sec mini" style="margin-top:8px" data-delarea="' + ar.id + '">remover área</button>' : '') + '</div>';
+  }).join('');
+
+  state.areas.forEach(function (ar) {
+    ar.itens.forEach(function (i) {
+      tot++; if (i.atual >= i.meta) ok++;
+      somaAt += Math.min(i.atual, i.meta); somaMeta += i.meta;
+    });
+  });
+  $('sOk').textContent = ok;
+  $('sFalta').textContent = tot - ok;
+  $('sPct').textContent = (somaMeta ? Math.round(somaAt / somaMeta * 100) : 0) + '%';
+
+  $('hist').innerHTML = state.log.slice(0, 15).map(function (l) {
+    var d = new Date(l.ts);
+    return '<tr><td>' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
+      '</td><td>' + esc(l.lider) + '</td><td>' + esc(l.area) + '</td><td>' + esc(l.item) + '</td><td>' + esc(l.mov) +
+      (l.obs ? ' <span class="falta">(' + esc(l.obs) + ')</span>' : '') + '</td><td>' + l.de + ' → ' + l.para + '/' + l.meta + '</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="falta">Nenhum lançamento ainda.</td></tr>';
+
+  fillItens();
+}
+
+$('hoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+
+$('area').onchange = fillItens;
+
+$('enviar').onclick = function () {
+  var lider = $('lider').value.trim(), qtd = parseInt($('qtd').value, 10);
+  var ar = state.areas.find(function (x) { return x.id === $('area').value; });
+  var it = ar && ar.itens.find(function (x) { return x.id === $('item').value; });
+  var msg = $('msg');
+  msg.style.color = 'var(--bad)';
+  if (!lider) { msg.textContent = 'Informe o nome do líder.'; return; }
+  if (!it) { msg.textContent = 'Selecione área e insumo.'; return; }
+  if (isNaN(qtd) || qtd < 0) { msg.textContent = 'Informe uma quantidade válida.'; return; }
+
+  var tipo = $('tipo').value, de = it.atual, para;
+  if (tipo === 'set') para = qtd;
+  else if (tipo === 'add') para = de + qtd;
+  else para = Math.max(0, de - qtd);
+  it.atual = para;
+
+  state.log.unshift({
+    ts: Date.now(), lider: lider, area: ar.nome, item: it.nome,
+    mov: tipo === 'set' ? 'contagem' : tipo === 'add' ? '+' + qtd : '−' + qtd,
+    de: de, para: para, meta: it.meta, obs: $('obs').value.trim()
+  });
+  state.log = state.log.slice(0, 200);
+  save();
+  $('qtd').value = ''; $('obs').value = '';
+  msg.style.color = 'var(--ok)';
+  msg.textContent = 'Lançado: ' + it.nome + ' agora em ' + para + '/' + it.meta + '.';
+  render();
+};
+
+$('addArea').onclick = function () {
+  var n = $('novaArea').value.trim();
+  if (!n) return;
+  state.areas.push({ id: uid(), nome: n, itens: [] });
+  $('novaArea').value = '';
+  save(); fillSelects(); render();
+};
+
+$('addItem').onclick = function () {
+  var n = $('novoItem').value.trim(), m = parseInt($('novaMeta').value, 10);
+  var ar = state.areas.find(function (x) { return x.id === $('area').value; });
+  if (!ar || !n || isNaN(m) || m < 1) return;
+  ar.itens.push({ id: uid(), nome: n, meta: m, atual: 0 });
+  $('novoItem').value = ''; $('novaMeta').value = '';
+  save(); render();
+};
+
+$('reset').onclick = function () {
+  if (!confirm('Apagar tudo e restaurar os dados de exemplo?')) return;
+  state = seed(); save(); fillSelects(); render();
+};
+
+$('soFalta').onchange = render;
+$('edicao').onchange = render;
+
+$('areas').onclick = function (e) {
+  var t = e.target;
+  if (t.dataset.meta) {
+    var p = t.dataset.meta.split('|');
+    var ar = state.areas.find(function (x) { return x.id === p[0]; });
+    var it = ar.itens.find(function (x) { return x.id === p[1]; });
+    var v = parseInt(prompt('Nova meta para ' + it.nome + ':', it.meta), 10);
+    if (!isNaN(v) && v > 0) { it.meta = v; save(); render(); }
+  } else if (t.dataset.del) {
+    var q = t.dataset.del.split('|');
+    var a2 = state.areas.find(function (x) { return x.id === q[0]; });
+    if (confirm('Remover este insumo?')) { a2.itens = a2.itens.filter(function (x) { return x.id !== q[1]; }); save(); render(); }
+  } else if (t.dataset.delarea) {
+    if (confirm('Remover a área inteira?')) {
+      state.areas = state.areas.filter(function (x) { return x.id !== t.dataset.delarea; });
+      save(); fillSelects(); render();
+    }
+  }
+};
+
+fillSelects();
+render();
+</script>
+</body>
+</html>
